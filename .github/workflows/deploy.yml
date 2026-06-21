@@ -1,29 +1,19 @@
 name: Deploy
 
 on:
-  push:
-    branches:
-      - main
+push:
+branches:
+- main
 
 jobs:
+deploy:
+runs-on: self-hosted
 
-  deploy:
-
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy
-
-        uses: appleboy/ssh-action@v1.0.3
-
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-          script: |
-            cd /opt/kernaleye
-            git pull origin main
-            docker compose up -d --build
+```
+steps:
+  - name: Deploy Application
+    run: |
+      cd /opt/kernaleye
+      git pull origin main
+      docker compose up -d --build
+```
