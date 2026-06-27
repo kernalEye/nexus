@@ -1,19 +1,17 @@
 name: Deploy
 
 on:
-push:
-branches:
-- main
+  push:
+    branches:
+      - main
 
 jobs:
-deploy:
-runs-on: self-hosted
+  deploy:
+    runs-on: self-hosted
 
-```
-steps:
-  - name: Deploy Application
-    run: |
-      cd /opt/kernaleye
-      git pull origin main
-      docker compose up -d --build
-```
+    steps:
+      - name: Deploy Application
+        run: |
+          cd /opt/kernaleye/nexus
+          git pull origin main
+          docker compose up -d --build
