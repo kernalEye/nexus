@@ -8,6 +8,9 @@ import { UseGuards } from '@nestjs/common';
 import { GqlAuthGuard } from './guards/gql-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { UserEntity } from './entities/user.entities';
+import { RefreshResponse } from './dto/refresh-response.dto';
+import { RefreshTokenInput } from './dto/refresh-token.input';
+import { LogoutInput } from './dto/logout.input';
 
 @Resolver()
 export class AuthResolver {
@@ -32,7 +35,20 @@ export class AuthResolver {
   @Query(() => UserEntity)
   @UseGuards(GqlAuthGuard)
   me(@CurrentUser() user: any) {
-    console.log('user::>>', user);
     return this.authService.me(user.sub);
+  }
+  @Mutation(() => RefreshResponse)
+  refresh(
+    @Args('input')
+    input: RefreshTokenInput,
+  ) {
+    return this.authService.refresh(input.refreshToken);
+  }
+  @Mutation(() => AuthResponse)
+  logout(
+    @Args('input')
+    input: LogoutInput,
+  ) {
+    return this.authService.logout(input.refreshToken);
   }
 }

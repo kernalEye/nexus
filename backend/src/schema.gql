@@ -15,6 +15,11 @@ type UserEntity {
   email: String!
 }
 
+type RefreshResponse {
+  accessToken: String!
+  refreshToken: String!
+}
+
 type Query {
   health: String!
   me: UserEntity!
@@ -23,6 +28,8 @@ type Query {
 type Mutation {
   register(input: RegisterInput!): AuthResponse!
   login(input: LoginInput!): AuthResponse!
+  refresh(input: RefreshTokenInput!): RefreshResponse!
+  logout(input: LogoutInput!): AuthResponse!
 }
 
 input RegisterInput {
@@ -34,4 +41,12 @@ input RegisterInput {
 input LoginInput {
   email: String!
   password: String!
+}
+
+input RefreshTokenInput {
+  refreshToken: String!
+}
+
+input LogoutInput {
+  refreshToken: String!
 }
