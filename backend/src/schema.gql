@@ -1,0 +1,37 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type AuthResponse {
+  success: Boolean!
+  message: String!
+  accessToken: String
+  refreshToken: String
+}
+
+type UserEntity {
+  id: Int!
+  name: String!
+  email: String!
+}
+
+type Query {
+  health: String!
+  me: UserEntity!
+}
+
+type Mutation {
+  register(input: RegisterInput!): AuthResponse!
+  login(input: LoginInput!): AuthResponse!
+}
+
+input RegisterInput {
+  name: String!
+  email: String!
+  password: String!
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+}
