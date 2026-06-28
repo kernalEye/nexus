@@ -81,7 +81,6 @@ export class AuthService {
         userId: user.id,
       },
     });
-    console.log('tenantUser::>>', tenantUser);
     if (!tenantUser) {
       throw new UnauthorizedException('User is not assigned to any tenant');
     }
@@ -92,7 +91,6 @@ export class AuthService {
       role: tenantUser.role,
       type: 'access',
     });
-    console.log('accessToken::>>', accessToken);
     const refreshToken = this.jwtService.sign(
       {
         sub: user.id,
@@ -103,7 +101,6 @@ export class AuthService {
         expiresIn: process.env.JWT_REFRESH_EXPIRES as StringValue,
       },
     );
-    // console.log('refreshToken', refreshToken);
     const tokenHash = await bcrypt.hash(refreshToken, 10);
     await this.prisma.refreshToken.create({
       data: {
@@ -126,5 +123,116 @@ export class AuthService {
         id: userId,
       },
     });
+  }
+  async refresh(refreshToken: string) {
+    const { payload, session } =
+      await this.validateRefreshSession(refreshToken);
+    const tenantUser = await this.prisma.tenantUser.findFirst({
+      where: {
+        userId: payload.sub,
+      },
+    });
+
+    if (!tenantUser) {
+      throw new UnauthorizedException('User is not assigned to any tenant');
+    }
+    const newSessionId = randomUUID();
+    const accessToken = this.jwtService.sign({
+      sub: payload.sub,
+      tenantId: tenantUser.tenantId,
+      role: tenantUser.role,
+      type: 'access',
+    });
+    const newRefreshToken = this.jwtService.sign(
+      {
+        sub: payload.sub,
+        sessionId: newSessionId,
+        type: 'refresh',
+      },
+      {
+        expiresIn: process.env.JWT_REFRESH_EXPIRES as StringValue,
+      },
+    );
+    const tokenHash = await bcrypt.hash(newRefreshToken, 10);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.refreshToken.create({
+        data: {
+          sessionId: newSessionId,
+          userId: payload.sub,
+          tokenHash,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        },
+      });
+
+      await tx.refreshToken.update({
+        where: {
+          sessionId: payload.sessionId,
+        },
+        data: {
+          revokedAt: new Date(),
+        },
+      });
+    });
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+    };
+  }
+  async logout(refreshToken: string) {
+    const { payload } = await this.validateRefreshSession(refreshToken);
+    await this.prisma.refreshToken.update({
+      where: {
+        sessionId: payload.sessionId,
+      },
+      data: {
+        revokedAt: new Date(),
+      },
+    });
+    return {
+      success: true,
+      message: 'Logout successful',
+    };
+  }
+  private async validateRefreshSession(refreshToken: string) {
+    let payload: any;
+
+    try {
+      payload = this.jwtService.verify(refreshToken);
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    if (payload.type !== 'refresh') {
+      throw new UnauthorizedException('Invalid token type');
+    }
+
+    const session = await this.prisma.refreshToken.findUnique({
+      where: {
+        sessionId: payload.sessionId,
+      },
+    });
+
+    if (!session) {
+      throw new UnauthorizedException('Session not found');
+    }
+
+    const valid = await bcrypt.compare(refreshToken, session.tokenHash);
+
+    if (!valid) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    if (session.revokedAt) {
+      throw new UnauthorizedException('Session revoked');
+    }
+
+    if (session.expiresAt < new Date()) {
+      throw new UnauthorizedException('Refresh token expired');
+    }
+
+    return {
+      payload,
+      session,
+    };
   }
 }
